@@ -1,6 +1,6 @@
-require_relative "application_service"
+require_relative "../application_service"
 require_relative "base"
-require_relative "aps_http"
+require_relative "../aps_http"
 require "cgi"
 
 module Aps
