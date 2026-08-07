@@ -61,8 +61,13 @@ module Auth
         post_form(token_url, grant_type: "refresh_token", refresh_token: refresh_token_value)
       end
 
-      def two_legged_token
-        response = post_form(token_url, grant_type: "client_credentials", scope: "viewables:read")
+      def two_legged_token(client_id: self.client_id, client_secret: self.client_secret, scope: "viewables:read")
+        response = post_form(
+          token_url,
+          { grant_type: "client_credentials", scope: scope },
+          client_id: client_id,
+          client_secret: client_secret
+        )
         Rails.logger.info("2-legged token response keys: #{response.keys}")
         response["access_token"]
       end
@@ -127,9 +132,9 @@ module Auth
 
       # ── HTTP helpers ──────────────────────────────────────────────────────
 
-      def post_form(url, payload)
+      def post_form(url, payload, client_id: self.client_id, client_secret: self.client_secret)
         response = RestClient.post(url, payload, {
-          Authorization: "Basic #{basic_auth_token}",
+          Authorization: "Basic #{basic_auth_token(client_id, client_secret)}",
           content_type:  "application/x-www-form-urlencoded",
           accept:        :json
         })
@@ -139,7 +144,7 @@ module Auth
         raise StandardError, "APS Authentication Failed"
       end
 
-      def basic_auth_token
+      def basic_auth_token(client_id = self.client_id, client_secret = self.client_secret)
         Base64.strict_encode64("#{client_id}:#{client_secret}")
       end
     end
