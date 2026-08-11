@@ -54,11 +54,11 @@ module Auth
       # ── Token exchange ────────────────────────────────────────────────────
 
       def exchange_code_for_token(code, callback_url)
-        post_form(token_url, grant_type: "authorization_code", code: code, redirect_uri: callback_url)
+        post_form(token_url, { grant_type: "authorization_code", code: code, redirect_uri: callback_url })
       end
 
       def refresh_token(refresh_token_value)
-        post_form(token_url, grant_type: "refresh_token", refresh_token: refresh_token_value)
+        post_form(token_url, { grant_type: "refresh_token", refresh_token: refresh_token_value })
       end
 
       def two_legged_token(client_id: self.client_id, client_secret: self.client_secret, scope: "viewables:read")
