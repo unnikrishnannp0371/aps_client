@@ -60,11 +60,25 @@ module ApsHttp
     JSON.parse(response.body)
   rescue RestClient::ExceptionWithResponse => e
     Rails.logger.error("APS HTTP Error [GET #{path}]: #{e.response}")
+
+    # Connection-level failures (timeouts, DNS failures, connection refused)
+    # get caught by this rescue but never had an HTTP response at all — prior
+    # to this fix, e.response.code below crashed with a confusing
+    # NoMethodError instead of surfacing the real failure. This branch is the
+    # ONLY change; every case branch below is unchanged, so behavior for
+    # actual HTTP error responses (401/403/404/429/5xx) is identical to
+    # before for every existing caller, including aps-viewer-api.
+    if e.response.nil?
+      raise ApsErrors::ConnectionError, "Could not connect to Autodesk API (#{e.class}: #{e.message})"
+    end
+
     case e.response.code
     when 401 then raise ApsErrors::Unauthorized, "Autodesk token invalid or expired"
     when 403 then raise ApsErrors::Forbidden,    "Access denied to this resource"
     when 404 then raise ApsErrors::NotFound,     "Resource not found"
-    when 429 then raise ApsErrors::RateLimited,  "Autodesk API rate limit exceeded"
+    when 429
+      retry_after = e.response.headers[:retry_after]&.to_i
+      raise ApsErrors::RateLimited.new("Autodesk API rate limit exceeded", retry_after: retry_after)
     else          raise ApsErrors::ServerError,  "Autodesk API error (#{e.response.code})"
     end
   end
