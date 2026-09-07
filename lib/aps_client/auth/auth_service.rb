@@ -89,7 +89,12 @@ module Auth
         return nil if refresh.blank?
 
         response = refresh_token(refresh)
-        return nil unless response["access_token"]
+        unless response["access_token"]
+          session[:aps_access_token]  = nil
+          session[:aps_refresh_token] = nil
+          session[:aps_expires_at]    = nil
+          return nil
+        end
 
         session[:aps_access_token]  = response["access_token"]
         session[:aps_refresh_token] = response["refresh_token"] if response["refresh_token"].present?
@@ -101,13 +106,13 @@ module Auth
       end
 
       def revoke_token(token)
-        RestClient.post(
-          "#{base_url}/authentication/v2/revoke",
-          { token: token, token_type_hint: "access_token" },
-          {
-            Authorization: "Basic #{basic_auth_token}",
-            content_type: "application/x-www-form-urlencoded"
-          }
+        RestClient::Request.execute(
+          method:  :post,
+          url:     "#{base_url}/authentication/v2/revoke",
+          payload: { token: token, token_type_hint: "access_token" },
+          headers: { Authorization: "Basic #{basic_auth_token}", content_type: "application/x-www-form-urlencoded" },
+          timeout:      30,
+          open_timeout: 10
         )
         Rails.logger.info("Token revoked successfully")
       rescue => e
@@ -117,14 +122,19 @@ module Auth
       # ── User info ─────────────────────────────────────────────────────────
 
       def fetch_user_info(access_token)
-        response = RestClient.get(
-          user_info_url,
-          Authorization: "Bearer #{access_token}",
-          Accept:        "application/json"
+        response = RestClient::Request.execute(
+          method:       :get,
+          url:          user_info_url,
+          headers:      { Authorization: "Bearer #{access_token}", Accept: "application/json" },
+          timeout:      30,
+          open_timeout: 10
         )
         JSON.parse(response.body)
       rescue RestClient::ExceptionWithResponse => e
         Rails.logger.error("APS User Info Error: #{e.response.body}")
+        raise StandardError, "Failed to fetch user info"
+      rescue RestClient::Exceptions::Timeout => e
+        Rails.logger.error("APS User Info Error: request timed out (#{e.class})")
         raise StandardError, "Failed to fetch user info"
       end
 
