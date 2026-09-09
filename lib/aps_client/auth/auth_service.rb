@@ -61,6 +61,9 @@ module Auth
         post_form(token_url, { grant_type: "refresh_token", refresh_token: refresh_token_value })
       end
 
+      # Used by Viewer app, ChecQR app for M2M/service-account auth — no call
+      # sites in this repo or aps-dashboards-api. Confirmed live consumer as of
+      # 2026-09-08; do not remove without checking there first.
       def two_legged_token(client_id: self.client_id, client_secret: self.client_secret, scope: "viewables:read")
         response = post_form(
           token_url,
