@@ -1,4 +1,6 @@
-require "base64"
+# frozen_string_literal: true
+
+require 'base64'
 
 class ApplicationService
   # Shared ID encoding helpers available as both class and instance methods.
@@ -12,14 +14,14 @@ class ApplicationService
     Base64.urlsafe_decode64(encoded_id.to_s)
   rescue ArgumentError => e
     Rails.logger.error("ID Decoding Error: #{e.message}")
-    raise StandardError, "Invalid ID provided"
+    raise StandardError, 'Invalid ID provided'
   end
 
   # Autodesk Data Management project IDs carry a "b." prefix (e.g. "b.9c8e7447-...").
   # ACC construction APIs (Issues, RFIs, Health) reject that prefix and expect a bare UUID.
   # Use this instead of decode_id whenever passing a project ID to an ACC construction API.
   def self.acc_project_id(encoded_id)
-    decode_id(encoded_id).delete_prefix("b.")
+    decode_id(encoded_id).delete_prefix('b.')
   end
 
   # Delegate instance calls to class methods so existing instance-style callers

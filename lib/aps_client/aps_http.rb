@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Mixin for APS REST calls. Include in any service that talks to the
 # Autodesk Platform Services API.
 #
@@ -15,7 +17,7 @@
 module ApsHttp
   # URL-safe query string builder — escapes both keys and values.
   def build_params(opts)
-    opts.compact.map { |k, v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v.to_s)}" }.join("&")
+    opts.compact.map { |k, v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v.to_s)}" }.join('&')
   end
 
   # Paginate through any ACC/APS endpoint that uses offset/limit pagination.
@@ -36,11 +38,12 @@ module ApsHttp
 
       params = build_params(extra_params.merge(offset: offset, limit: page_size))
       page   = get("#{path}?#{params}", access_token)
-      batch  = page["results"] || []
+      batch  = page['results'] || []
       all.concat(batch)
 
-      total = page.dig("pagination", "totalResults").to_i
-      break if batch.empty? || (page.dig("pagination", "totalResults") && all.length >= total)
+      total = page.dig('pagination', 'totalResults').to_i
+      break if batch.empty? || (page.dig('pagination', 'totalResults') && all.length >= total)
+
       offset += page_size
     end
 
@@ -55,10 +58,10 @@ module ApsHttp
     begin
       attempts += 1
       response = RestClient::Request.execute(
-        method:       :get,
-        url:          url,
-        headers:      { Authorization: "Bearer #{access_token}", Accept: "application/json" },
-        timeout:      30,
+        method: :get,
+        url: url,
+        headers: { Authorization: "Bearer #{access_token}", Accept: 'application/json' },
+        timeout: 30,
         open_timeout: 10
       )
       JSON.parse(response.body)
@@ -70,16 +73,16 @@ module ApsHttp
       end
 
       case e.response.code
-      when 401 then raise ApsErrors::Unauthorized, "Autodesk token invalid or expired"
-      when 403 then raise ApsErrors::Forbidden,    "Access denied to this resource"
-      when 404 then raise ApsErrors::NotFound,     "Resource not found"
+      when 401 then raise ApsErrors::Unauthorized, 'Autodesk token invalid or expired'
+      when 403 then raise ApsErrors::Forbidden,    'Access denied to this resource'
+      when 404 then raise ApsErrors::NotFound,     'Resource not found'
       when 429
         retry_after = e.response.headers[:retry_after]&.to_i
         if attempts < max_attempts
           sleep((retry_after || 2**attempts) + rand(0.0..1.0))
           retry
         end
-        raise ApsErrors::RateLimited.new("Autodesk API rate limit exceeded", retry_after: retry_after)
+        raise ApsErrors::RateLimited.new('Autodesk API rate limit exceeded', retry_after: retry_after)
       else raise ApsErrors::ServerError, "Autodesk API error (#{e.response.code})"
       end
     end
